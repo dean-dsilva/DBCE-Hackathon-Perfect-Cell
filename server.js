@@ -12,12 +12,14 @@ const PUBLIC = path.join(ROOT, "public");
 const DATA = path.join(ROOT, "data");
 const CACHE_FILE = path.join(DATA, "ai-cache.json");
 
-// load .env manually (no dotenv dependency needed)
+// load .env manually if present (no dotenv dependency needed; optional on cloud hosts)
 const env = {};
-for (const line of fs.readFileSync(path.join(ROOT, ".env"), "utf8").split("\n")) {
-  const m = line.match(/^\s*([A-Z_]+)\s*=\s*(.+)\s*$/);
-  if (m) env[m[1]] = m[2].trim();
-}
+try {
+  for (const line of fs.readFileSync(path.join(ROOT, ".env"), "utf8").split("\n")) {
+    const m = line.match(/^\s*([A-Z_]+)\s*=\s*(.+)\s*$/);
+    if (m) env[m[1]] = m[2].trim();
+  }
+} catch {}
 const API_KEY = process.env.GEMINI_API_KEY || env.GEMINI_API_KEY;
 const PORT = Number(process.env.PORT || env.PORT || 3000);
 if (!API_KEY) { console.error("FATAL: GEMINI_API_KEY missing in .env"); process.exit(1); }
