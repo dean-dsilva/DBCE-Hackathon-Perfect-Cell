@@ -6,6 +6,14 @@ job postings, and **Gemini AI** that ranks the best candidates for any job
 
 Built for the DBCE Hackathon.
 
+## Team SSD
+
+| | |
+|---|---|
+| **Team Name** | SSD |
+| **Event** | DBCE Hackathon |
+| **Project** | Perfect Cell — AI Placement Accelerator & Skills Intelligence |
+
 ## Quick start
 
 ```bash
