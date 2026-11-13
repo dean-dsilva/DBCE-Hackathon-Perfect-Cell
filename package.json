@@ -1,0 +1,13 @@
+{
+  "name": "perfect-cell",
+  "version": "1.0.0",
+  "description": "AI Placement Accelerator & Skills Intelligence — Gemini-powered college placement platform",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
