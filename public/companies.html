@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perfect Cell — Companies</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo"><div class="dot">🎓</div><div>Perfect Cell<small>AI Placement Accelerator</small></div></div>
+    <nav class="nav">
+      <a href="/">📊 Dashboard</a>
+      <a href="/students.html">🧑‍🎓 Students</a>
+      <a href="/companies.html" class="active">🏢 Companies</a>
+    </nav>
+    <div class="foot">Demo build · Skills Intelligence<br>Powered by Gemini AI</div>
+  </aside>
+
+  <main class="main">
+    <div class="page-head">
+      <h1>Company Job Postings <span class="ai-badge">✦ AI candidate matching</span></h1>
+      <p>Run a posting below, or paste any job description to match students against it.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Or paste your own job description</h2>
+      <textarea class="input" id="jd" placeholder="e.g. Hiring Junior Backend Developer. Requirements: 2+ years Python, REST APIs, SQL, Docker. Nice to have: AWS experience…"></textarea>
+      <button class="btn" id="customBtn" onclick="matchCustom()" style="margin-top:14px">✦ Find Best Candidates for This Role</button>
+      <div id="customOut"></div>
+    </div>
+
+    <div id="jobs"></div>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+<script>
+(async () => {
+  const jobs = await api("/api/companies");
+  el("jobs").innerHTML = jobs.map(c => `
+    <div class="job-card">
+      <div class="head">
+        <div><h3>${esc(c.name)} — ${esc(c.role)}</h3>
+          <div class="meta">💰 ${c.package} &nbsp;·&nbsp; 📍 ${esc(c.location)} &nbsp;·&nbsp; 🎯 Min CGPA ${c.minCGPA} &nbsp;·&nbsp; ${c.eligibleBranches.join(" / ")}</div></div>
+        <button class="btn" id="btn-${c.id}" onclick="matchJob('${c.id}')">✦ Find Best Candidates</button>
+      </div>
+      <p>${esc(c.description)}</p>
+      <div class="chips">${c.requiredSkills.map(s=>`<span class="chip">${pretty(s)}</span>`).join("")}</div>
+      <div id="out-${c.id}"></div>
+    </div>`).join("");
+})();
+
+function loadingHTML(msg) {
+  return `<div class="ai-box"><div class="loading shimmer"><div class="spinner"></div> ${esc(msg)} (first run takes 10–40s; Gemini reads all profiles)</div></div>`;
+}
+
+async function matchJob(id) {
+  const btn = el("btn-" + id), out = el("out-" + id);
+  btn.disabled = true; btn.textContent = "✦ Matching…";
+  out.innerHTML = loadingHTML("Gemini is scoring every eligible student against this posting…");
+  try { out.innerHTML = renderMatches(await api("/api/ai/match", { method: "POST", body: { companyId: id } })); }
+  catch (e) { out.innerHTML = `<div class="err">Matching failed: ${esc(e.message)}</div>`; }
+  btn.disabled = false; btn.textContent = "✦ Find Best Candidates";
+}
+
+async function matchCustom() {
+  const text = el("jd").value.trim(), out = el("customOut"), btn = el("customBtn");
+  if (!text) { out.innerHTML = `<div class="err">Paste a job description first.</div>`; return; }
+  btn.disabled = true; btn.textContent = "✦ Matching…";
+  out.innerHTML = loadingHTML("Gemini is reading your custom job description and ranking students…");
+  try { out.innerHTML = renderMatches(await api("/api/ai/match", { method: "POST", body: { jobText: text } })); }
+  catch (e) { out.innerHTML = `<div class="err">Matching failed: ${esc(e.message)}</div>`; }
+  btn.disabled = false; btn.textContent = "✦ Find Best Candidates for This Role";
+}
+
+function vCls(v) { return v >= 75 ? "score-g" : v >= 50 ? "score-y" : "score-r"; }
+
+function renderMatches(data) {
+  const r = data.results || [];
+  if (!r.length) return `<div class="empty">No candidates returned.</div>`;
+  return `
+    <div class="ai-box" style="margin-top:16px">
+      <div class="head"><strong>✦ AI-Ranked Candidates ${data.cached ? '<span class="badge b">cached — instant</span>' : ""}</strong>
+        <span style="font-size:12px;color:var(--muted)">${r.length} best matches</span></div>
+      ${r.map((m, i) => `
+        <div class="match-row">
+          <div class="rank">${i === 0 ? "🏆" : "#" + (i + 1)}</div>
+          <div class="info">
+            <h4>${esc(m.name || m.studentId)}</h4>
+            <div class="meta">
+              <span class="badge ${m.verdict.startsWith("Strong") ? "g" : m.verdict.startsWith("Good") ? "b" : m.verdict.startsWith("Moderate") ? "y" : "r"}">${esc(m.verdict)}</span>
+              &nbsp;${m.matchedSkills.map(s=>`<span class="chip" style="border-color:rgba(52,211,153,.4);color:var(--green)">✓ ${esc(pretty(s))}</span>`).join("")}
+            </div>
+            ${m.gaps && m.gaps.length ? `<div class="meta" style="margin-top:6px">⚠ Gaps: ${m.gaps.map(esc).join(" · ")}</div>` : ""}
+            <div class="reason">${esc(m.reason)}</div>
+          </div>
+          <div class="score-wrap"><span class="big-score ${vCls(m.matchScore)}">${m.matchScore}</span><div class="circ">match %</div></div>
+        </div>`).join("")}
+    </div>`;
+}
+</script>
+</body>
+</html>

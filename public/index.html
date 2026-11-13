@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perfect Cell — Dashboard</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo"><div class="dot">🎓</div><div>Perfect Cell<small>AI Placement Accelerator</small></div></div>
+    <nav class="nav">
+      <a href="/" class="active">📊 Dashboard</a>
+      <a href="/students.html">🧑‍🎓 Students</a>
+      <a href="/companies.html">🏢 Companies</a>
+    </nav>
+    <div class="foot">Demo build · Skills Intelligence<br>Powered by Gemini AI</div>
+  </aside>
+
+  <main class="main">
+    <div class="page-head">
+      <h1>Placement Cell Dashboard</h1>
+      <p>Live skill intelligence across the current batch.</p>
+    </div>
+
+    <div class="grid stats-row" id="stats"></div>
+
+    <div class="two-col">
+      <div class="panel">
+        <h2>Average Skill Levels <span class="ai-badge">batch-wide</span></h2>
+        <div id="skillBars"></div>
+      </div>
+      <div class="panel">
+        <h2>Students per Branch</h2>
+        <div id="branchBars"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Top Candidates by Overall Skill Score</h2>
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Branch</th><th>CGPA</th><th>Avg Skill</th><th>Status</th></tr></thead>
+        <tbody id="topTable"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+<script src="/app.js"></script>
+<script>
+(async () => {
+  const stats = await api("/api/stats");
+
+  el("stats").innerHTML = [
+    stat("Total Students", stats.totalStudents, "across " + Object.keys(stats.branchDist).length + " branches"),
+    stat("Placement Ready", stats.placementReady, "avg skill ≥ 7.5"),
+    stat("Batch Avg Skill", stats.avgSkill + " / 10", "weighted across 8 skills", true),
+    stat("Companies Hiring", stats.totalCompanies, "active job postings"),
+  ].join("");
+
+  el("skillBars").innerHTML = Object.entries(stats.skillAvg).map(([k, v]) => skillRow(pretty(k), v, 10)).join("");
+  const maxB = Math.max(...Object.values(stats.branchDist));
+  el("branchBars").innerHTML = Object.entries(stats.branchDist).map(([b, n]) => skillRow(b, n, maxB)).join("");
+
+  el("topTable").innerHTML = stats.topStudents.map((s, i) => `
+    <tr>
+      <td>${i + 1}</td><td><strong>${s.name}</strong></td><td>${s.branch}</td><td>${s.cgpa}</td>
+      <td><strong>${s.avgSkill}</strong></td>
+      <td>${s.avgSkill >= 7.5 ? '<span class="badge g">Ready</span>' : '<span class="badge y">In progress</span>'}</td>
+    </tr>`).join("");
+})();
+</script>
+</body>
+</html>

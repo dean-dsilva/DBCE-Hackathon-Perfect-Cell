@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perfect Cell — Students</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo"><div class="dot">🎓</div><div>Perfect Cell<small>AI Placement Accelerator</small></div></div>
+    <nav class="nav">
+      <a href="/">📊 Dashboard</a>
+      <a href="/students.html" class="active">🧑‍🎓 Students</a>
+      <a href="/companies.html">🏢 Companies</a>
+    </nav>
+    <div class="foot">Demo build · Skills Intelligence<br>Powered by Gemini AI</div>
+  </aside>
+
+  <main class="main">
+    <div class="page-head">
+      <h1>Student Skills <span class="ai-badge">✦ AI analysis available</span></h1>
+      <p>Click any student to open their profile and run a Gemini-powered skill analysis.</p>
+    </div>
+
+    <div class="controls">
+      <input class="input" id="q" placeholder="Search name…">
+      <select class="input" id="branch"><option value="">All branches</option></select>
+    </div>
+
+    <div class="grid cards" id="cards"></div>
+  </main>
+</div>
+
+<!-- profile modal -->
+<div class="modal-back" id="back">
+  <div class="modal">
+    <button class="close" onclick="closeModal()">✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+<script>
+let students = [];
+const back = el("back");
+
+(async () => {
+  students = await api("/api/students");
+  const branches = [...new Set(students.map(s => s.branch))];
+  el("branch").innerHTML += branches.map(b => `<option>${b}</option>`).join("");
+  render();
+})();
+
+el("q").addEventListener("input", render);
+el("branch").addEventListener("change", render);
+
+function render() {
+  const q = el("q").value.toLowerCase(), br = el("branch").value;
+  const list = students.filter(s => s.name.toLowerCase().includes(q) && (!br || s.branch === br));
+  el("cards").innerHTML = list.length ? list.map(s => {
+    const avg = (Object.values(s.skills).reduce((a,b)=>a+b,0)/8).toFixed(1);
+    const badge = avg >= 7.5 ? '<span class="badge g">Ready</span>' : avg >= 6.5 ? '<span class="badge y">In progress</span>' : '<span class="badge r">Needs work</span>';
+    return `<div class="card" onclick="openStudent('${s.id}')">
+      <div class="top"><div><h3>${s.name}</h3><div class="meta">${s.branch} · Year ${s.year} · CGPA ${s.cgpa}</div></div>${badge}</div>
+      <div class="skills">
+        ${skillRow("Coding", s.skills.coding, 10)}
+        ${skillRow("Communication", s.skills.communication, 10)}
+        ${skillRow("Aptitude", s.skills.aptitude, 10)}
+      </div>
+      <div class="chips">${s.achievements.slice(0,2).map(a=>`<span class="chip">${esc(a.length>38?a.slice(0,38)+"…":a)}</span>`).join("")}</div>
+      <div class="foot"><span>${s.achievements.length} achievements</span><span>Avg skill <strong style="color:var(--text)">${avg}</strong></span></div>
+    </div>`;
+  }).join("") : `<div class="empty">No students match your filters.</div>`;
+}
+
+async function openStudent(id) {
+  const s = students.find(x => x.id === id);
+  el("modalBody").innerHTML = `
+    <h2>${s.name}</h2>
+    <div class="sub">${s.branch} · Batch ${s.year} · CGPA ${s.cgpa}</div>
+    <div class="section-title">Skill Profile (self-reported)</div>
+    ${Object.entries(s.skills).map(([k,v]) => skillRow(pretty(k), v, 10)).join("")}
+    <div class="section-title">Achievements</div>
+    <ul class="fancy">${s.achievements.map(a=>`<li>${esc(a)}</li>`).join("")}</ul>
+    <button class="btn" id="aiBtn" onclick="runAI('${s.id}')" style="margin-top:20px">✦ Run AI Skill Analysis</button>
+    <div id="aiOut"></div>`;
+  back.classList.add("open");
+}
+
+function closeModal() { back.classList.remove("open"); }
+back.addEventListener("click", e => { if (e.target === back) closeModal(); });
+
+async function runAI(id) {
+  const btn = el("aiBtn"), out = el("aiOut");
+  btn.disabled = true; btn.textContent = "✦ Analyzing with Gemini…";
+  out.innerHTML = `<div class="ai-box"><div class="loading shimmer"><div class="spinner"></div> Gemini is reading the profile, judging achievements and scoring skills… (first run can take 10–40s)</div></div>`;
+  try {
+    const r = await api(`/api/ai/analyze-student?id=${id}`);
+    const cls = r.readinessScore >= 75 ? "score-g" : r.readinessScore >= 50 ? "score-y" : "score-r";
+    const bcls = v => v >= 7 ? "hi" : v >= 5 ? "mid" : "lo";
+    out.innerHTML = `
+      <div class="ai-box">
+        <div class="head"><strong>✦ Gemini Skill Analysis ${r.cached ? '<span class="badge b">cached</span>' : ""}</strong>
+          <div class="score-wrap"><span class="big-score ${cls}">${r.readinessScore}</span><div class="circ">readiness / 100</div></div></div>
+        <div class="verdict">“${esc(r.verdict)}”</div>
+        <div class="section-title">AI-Estimated Skill Levels</div>
+        ${Object.entries(r.skillLevels).map(([k,v]) => `<div class="skill-row"><div class="name">${pretty(k)}</div><div class="bar"><div class="${bcls(v)}" style="width:${v*10}%"></div></div><div class="val">${v}</div></div>`).join("")}
+        <div class="section-title">Strengths</div><ul class="fancy plus">${r.strengths.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+        <div class="section-title">Gaps</div><ul class="fancy minus">${r.gaps.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+        <div class="section-title">Recommendations</div><ul class="fancy">${r.recommendations.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+        <div class="section-title">Suggested Roles</div>
+        <div class="chips">${r.suggestedRoles.map(x=>`<span class="chip">${esc(x)}</span>`).join("")}</div>
+      </div>`;
+    btn.style.display = "none";
+  } catch (e) {
+    out.innerHTML = `<div class="err">AI analysis failed: ${esc(e.message)}</div>`;
+    btn.disabled = false; btn.textContent = "✦ Retry AI Analysis";
+  }
+}
+</script>
+</body>
+</html>
