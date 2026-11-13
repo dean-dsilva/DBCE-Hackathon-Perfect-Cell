@@ -18,8 +18,8 @@ for (const line of fs.readFileSync(path.join(ROOT, ".env"), "utf8").split("\n"))
   const m = line.match(/^\s*([A-Z_]+)\s*=\s*(.+)\s*$/);
   if (m) env[m[1]] = m[2].trim();
 }
-const API_KEY = env.GEMINI_API_KEY;
-const PORT = Number(env.PORT || 3000);
+const API_KEY = process.env.GEMINI_API_KEY || env.GEMINI_API_KEY;
+const PORT = Number(process.env.PORT || env.PORT || 3000);
 if (!API_KEY) { console.error("FATAL: GEMINI_API_KEY missing in .env"); process.exit(1); }
 
 // models to try, in order (fallback chain)
