@@ -5,6 +5,8 @@ company job postings, and **Gemini AI** that automatically recommends the best
 candidates for any job — with human-readable reasons — and analyzes each
 student's skills from their real achievements.
 
+Try it out here : https://perfect-cell-3x2j.onrender.com/
+
 ## 👥 Team SSD
 
 **Parul University, Goa** — competing at **Avinovate Hackathon, Don Bosco College of Engineering**
